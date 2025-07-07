@@ -3,7 +3,6 @@ YouTube Transcript Extractor
 A Flask web application for extracting and displaying YouTube video transcripts
 with timestamp support and text editing capabilities.
 """
-
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 from youtube_transcript_api import YouTubeTranscriptApi

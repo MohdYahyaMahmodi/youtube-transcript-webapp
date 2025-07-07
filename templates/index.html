@@ -20,13 +20,11 @@
         backdrop-filter: blur(10px);
         border: 1px solid rgba(255, 255, 255, 0.2);
       }
-
       .glass-dark {
         background: rgba(0, 0, 0, 0.1);
         backdrop-filter: blur(10px);
         border: 1px solid rgba(255, 255, 255, 0.1);
       }
-
       /* Background gradient */
       body {
         background: linear-gradient(
@@ -37,69 +35,56 @@
         );
         min-height: 100vh;
       }
-
       /* Transcript chunk styling */
       .transcript-chunk {
         transition: all 0.2s ease;
       }
-
       .transcript-chunk:hover {
         background: rgba(255, 255, 255, 0.05);
       }
-
       /* Scrollable container for long transcripts */
-      .virtual-scroll {
-        height: 400px;
+      .transcript-scroll {
+        max-height: 600px;
         overflow-y: auto;
         scrollbar-width: thin;
         scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
       }
-
       /* Webkit scrollbar styling */
-      .virtual-scroll::-webkit-scrollbar {
+      .transcript-scroll::-webkit-scrollbar {
         width: 6px;
       }
-
-      .virtual-scroll::-webkit-scrollbar-track {
+      .transcript-scroll::-webkit-scrollbar-track {
         background: transparent;
       }
-
-      .virtual-scroll::-webkit-scrollbar-thumb {
+      .transcript-scroll::-webkit-scrollbar-thumb {
         background-color: rgba(255, 255, 255, 0.3);
         border-radius: 3px;
       }
-
-      .virtual-scroll::-webkit-scrollbar-thumb:hover {
+      .transcript-scroll::-webkit-scrollbar-thumb:hover {
         background-color: rgba(255, 255, 255, 0.5);
       }
-
       /* Minimum height for chunks */
       .chunk-container {
         min-height: 80px;
       }
-
       /* Mobile-specific improvements */
       @media (max-width: 640px) {
-        .virtual-scroll {
-          height: 300px;
+        .transcript-scroll {
+          max-height: 400px;
         }
-
         .chunk-container {
           min-height: 60px;
         }
       }
-
       /* Focus styles for accessibility */
       .focus-visible {
         outline: 2px solid rgba(255, 255, 255, 0.5);
         outline-offset: 2px;
       }
-
       /* Loading animation */
       .spinner {
         animation: spin 1s linear infinite;
       }
-
       @keyframes spin {
         from {
           transform: rotate(0deg);
@@ -209,11 +194,11 @@
           <div class="flex gap-2">
             <button
               id="copyBtn"
-              aria-label="Copy transcript to clipboard"
+              aria-label="Copy entire transcript to clipboard"
               class="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-black/40 border border-white/20 rounded-sm hover:bg-black/60 transition-colors flex items-center justify-center gap-2 text-sm"
             >
               <i class="fas fa-copy" aria-hidden="true"></i>
-              Copy
+              Copy All
             </button>
             <button
               id="downloadBtn"
@@ -224,18 +209,10 @@
               Download
             </button>
           </div>
-
           <div
-            class="flex items-center justify-between sm:justify-end gap-2 text-xs sm:text-sm text-gray-400"
+            class="flex items-center justify-end text-xs sm:text-sm text-gray-400"
           >
             <span id="transcriptStats" aria-live="polite"></span>
-            <button
-              id="loadMoreBtn"
-              class="px-3 py-1 bg-white/10 rounded-sm hover:bg-white/20 transition-colors hidden text-xs sm:text-sm"
-              aria-label="Load more transcript sections"
-            >
-              Load More
-            </button>
           </div>
         </div>
 
@@ -244,7 +221,7 @@
           <!-- Timestamps View -->
           <div
             id="timestampsContent"
-            class="virtual-scroll p-3 sm:p-4 space-y-3 sm:space-y-4"
+            class="transcript-scroll p-3 sm:p-4 space-y-3 sm:space-y-4"
             role="tabpanel"
             aria-labelledby="timestampsTab"
             tabindex="0"
@@ -253,7 +230,7 @@
           <!-- Plain Text View -->
           <div
             id="plainContent"
-            class="virtual-scroll p-3 sm:p-4 space-y-3 sm:space-y-4 hidden"
+            class="transcript-scroll p-3 sm:p-4 space-y-3 sm:space-y-4 hidden"
             role="tabpanel"
             aria-labelledby="plainTab"
             tabindex="0"

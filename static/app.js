@@ -8,8 +8,6 @@
 // Global state management
 let currentTranscript = null;
 let activeTab = "timestamps";
-let displayedChunks = 0;
-let chunksPerLoad = 10; // Load chunks in batches for performance
 let updateTimeout = null; // Debouncing for text edits
 
 // DOM element references for performance
@@ -29,7 +27,6 @@ const elements = {
   copyBtn: document.getElementById("copyBtn"),
   downloadBtn: document.getElementById("downloadBtn"),
   transcriptStats: document.getElementById("transcriptStats"),
-  loadMoreBtn: document.getElementById("loadMoreBtn"),
 };
 
 /**
@@ -37,7 +34,6 @@ const elements = {
  */
 document.addEventListener("DOMContentLoaded", function () {
   setupEventListeners();
-
   // Focus on input for better UX
   if (elements.urlInput) {
     elements.urlInput.focus();
@@ -63,7 +59,6 @@ function setupEventListeners() {
   // Action buttons
   elements.copyBtn?.addEventListener("click", copyTranscript);
   elements.downloadBtn?.addEventListener("click", downloadTranscript);
-  elements.loadMoreBtn?.addEventListener("click", loadMoreChunks);
 
   // Keyboard navigation for tabs
   elements.timestampsTab?.addEventListener("keydown", handleTabKeydown);
@@ -128,7 +123,6 @@ async function fetchTranscript() {
 
     // Store transcript data globally
     currentTranscript = data;
-    displayedChunks = 0;
 
     // Update UI with new transcript
     displayVideo(data.videoId);
@@ -157,7 +151,6 @@ function isValidYouTubeUrl(url) {
     /^https?:\/\/(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)/,
     /^(youtube\.com\/watch\?v=|youtu\.be\/)/,
   ];
-
   return patterns.some((pattern) => pattern.test(url));
 }
 
@@ -177,6 +170,7 @@ function displayVideo(videoId) {
             class="w-full h-full"
         ></iframe>
     `;
+
   elements.videoSection?.classList.remove("hidden");
 }
 
@@ -193,7 +187,7 @@ function displayTranscriptStats(stats) {
 }
 
 /**
- * Initialize transcript display with lazy loading
+ * Display complete transcript immediately (no lazy loading)
  */
 function displayTranscript() {
   if (!currentTranscript) return;
@@ -202,48 +196,22 @@ function displayTranscript() {
   if (elements.timestampsContent) elements.timestampsContent.innerHTML = "";
   if (elements.plainContent) elements.plainContent.innerHTML = "";
 
-  // Load initial chunks
-  loadMoreChunks();
-
-  // Show transcript section
-  elements.transcriptSection?.classList.remove("hidden");
-}
-
-/**
- * Load more transcript chunks for performance optimization
- */
-function loadMoreChunks() {
-  if (!currentTranscript) return;
-
-  const remainingChunks = currentTranscript.chunks.length - displayedChunks;
-  const chunksToLoad = Math.min(chunksPerLoad, remainingChunks);
-
-  if (chunksToLoad === 0) {
-    elements.loadMoreBtn?.classList.add("hidden");
-    return;
-  }
-
-  // Use document fragments for efficient DOM manipulation
+  // Create document fragments for efficient DOM manipulation
   const timestampsFragment = document.createDocumentFragment();
   const plainFragment = document.createDocumentFragment();
 
-  // Create chunks in batch
-  for (let i = displayedChunks; i < displayedChunks + chunksToLoad; i++) {
-    const chunk = currentTranscript.chunks[i];
-
-    timestampsFragment.appendChild(createTimestampChunk(chunk, i));
-    plainFragment.appendChild(createPlainChunk(chunk, i));
-  }
+  // Load ALL chunks at once
+  currentTranscript.chunks.forEach((chunk, chunkIndex) => {
+    timestampsFragment.appendChild(createTimestampChunk(chunk, chunkIndex));
+    plainFragment.appendChild(createPlainChunk(chunk, chunkIndex));
+  });
 
   // Append to DOM in single operation
   elements.timestampsContent?.appendChild(timestampsFragment);
   elements.plainContent?.appendChild(plainFragment);
 
-  displayedChunks += chunksToLoad;
-
-  // Toggle load more button visibility
-  const hasMoreChunks = displayedChunks < currentTranscript.chunks.length;
-  elements.loadMoreBtn?.classList.toggle("hidden", !hasMoreChunks);
+  // Show transcript section
+  elements.transcriptSection?.classList.remove("hidden");
 }
 
 /**
@@ -281,6 +249,7 @@ function createTimestampChunk(chunk, chunkIndex) {
   chunk.entries.forEach((entry, entryIndex) => {
     const entryDiv = document.createElement("div");
     entryDiv.className = "flex gap-2 sm:gap-3 group";
+
     entryDiv.innerHTML = `
             <button 
                 onclick="jumpToTime(${entry.start})"
@@ -302,12 +271,12 @@ function createTimestampChunk(chunk, chunkIndex) {
                 ${escapeHtml(entry.text)}
             </p>
         `;
+
     content.appendChild(entryDiv);
   });
 
   chunkDiv.appendChild(header);
   chunkDiv.appendChild(content);
-
   return chunkDiv;
 }
 
@@ -352,7 +321,6 @@ function createPlainChunk(chunk, chunkIndex) {
 
   chunkDiv.appendChild(header);
   chunkDiv.appendChild(textArea);
-
   return chunkDiv;
 }
 
@@ -368,6 +336,7 @@ function switchTab(tab) {
       "flex-1 py-2 px-3 sm:px-4 rounded-sm bg-white text-black font-medium text-sm sm:text-base";
     elements.plainTab.className =
       "flex-1 py-2 px-3 sm:px-4 rounded-sm text-gray-400 hover:text-white transition-colors text-sm sm:text-base";
+
     elements.timestampsTab.setAttribute("aria-selected", "true");
     elements.plainTab.setAttribute("aria-selected", "false");
 
@@ -378,6 +347,7 @@ function switchTab(tab) {
       "flex-1 py-2 px-3 sm:px-4 rounded-sm bg-white text-black font-medium text-sm sm:text-base";
     elements.timestampsTab.className =
       "flex-1 py-2 px-3 sm:px-4 rounded-sm text-gray-400 hover:text-white transition-colors text-sm sm:text-base";
+
     elements.plainTab.setAttribute("aria-selected", "true");
     elements.timestampsTab.setAttribute("aria-selected", "false");
 
@@ -444,7 +414,6 @@ function handleTextEdit(event) {
     event.preventDefault();
     event.target.blur();
   }
-
   // Escape to cancel editing
   if (event.key === "Escape") {
     event.target.blur();
@@ -467,30 +436,57 @@ window.jumpToTime = function (seconds) {
 window.updateTranscriptEntry = updateTranscriptEntry;
 
 /**
- * Copy transcript to clipboard
+ * Copy entire transcript to clipboard - FIXED VERSION
  */
 async function copyTranscript() {
-  if (!currentTranscript) return;
-
-  let text;
-  if (activeTab === "timestamps") {
-    text = currentTranscript.chunks
-      .map((chunk) =>
-        chunk.entries
-          .map((entry) => `${entry.timestamp}: ${entry.text}`)
-          .join("\n")
-      )
-      .join("\n\n");
-  } else {
-    text = currentTranscript.plainChunks.join("\n\n");
+  if (!currentTranscript) {
+    showError("No transcript available to copy");
+    return;
   }
 
+  let text;
+
   try {
+    // Always copy the complete transcript regardless of what's currently displayed
+    if (activeTab === "timestamps") {
+      // Create timestamped version from all chunks
+      text = currentTranscript.chunks
+        .map((chunk) =>
+          chunk.entries
+            .map((entry) => `${entry.timestamp}: ${entry.text}`)
+            .join("\n")
+        )
+        .join("\n\n");
+    } else {
+      // Create plain text version from all chunks
+      text = currentTranscript.chunks.map((chunk) => chunk.text).join("\n\n");
+    }
+
+    // Use the Clipboard API
     await navigator.clipboard.writeText(text);
     showCopySuccess();
   } catch (error) {
     console.error("Failed to copy:", error);
-    showError("Failed to copy to clipboard");
+
+    // Fallback method for older browsers
+    try {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.position = "fixed";
+      textArea.style.left = "-999999px";
+      textArea.style.top = "-999999px";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+      showCopySuccess();
+    } catch (fallbackError) {
+      console.error("Fallback copy failed:", fallbackError);
+      showError(
+        "Failed to copy to clipboard. Please try selecting and copying manually."
+      );
+    }
   }
 }
 
@@ -502,7 +498,7 @@ function showCopySuccess() {
 
   const originalContent = elements.copyBtn.innerHTML;
   elements.copyBtn.innerHTML =
-    '<i class="fas fa-check" aria-hidden="true"></i>Copied';
+    '<i class="fas fa-check" aria-hidden="true"></i>Copied!';
   elements.copyBtn.disabled = true;
 
   setTimeout(() => {
@@ -530,7 +526,7 @@ function downloadTranscript() {
       .join("\n\n");
     filename = `transcript_${currentTranscript.videoId}_with_timestamps.txt`;
   } else {
-    text = currentTranscript.plainChunks.join("\n\n");
+    text = currentTranscript.chunks.map((chunk) => chunk.text).join("\n\n");
     filename = `transcript_${currentTranscript.videoId}_plain_text.txt`;
   }
 
@@ -543,12 +539,10 @@ function downloadTranscript() {
   // Create and trigger download
   const blob = new Blob([fullContent], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);
-
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
   link.style.display = "none";
-
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
